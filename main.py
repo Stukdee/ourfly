@@ -17,6 +17,7 @@ class Player(object):
 		self.speed : float = 2
 		self.shotTime : float = 0
 		self.rectCol : list = [0,0,16,16]
+		self.hp = 6
 	def update(self) -> None:
 		global deltaTime
 		self.x = self.midX - (self.rectWidth * self.scale / 2)
@@ -124,6 +125,21 @@ class LittlePlane(object):
 			0.1 * deltaTime * 60,
 			0.1
 		)
+		if isTouch(self.rectCol,self.app.player.rectCol):
+			self.isDie = True
+			self.app.player.hp -= 1
+class HpUI(object):
+	def __init__(self,tapp : App) -> None:
+		self.app : App = tapp
+		self.x : int = 4
+		self.y : int = 4
+		self.hp : int = 6
+		self.baseHp : int = 6
+		self.rectWidth : int = 8
+	def update(self) -> None:
+		if self.baseHp % 2 != 0:
+			self.baseHp += 1
+		self.hp = self.app.player.hp
 class App(object):
 	def __init__(self) -> None:
 		self.screenWidth : int = 300
@@ -132,6 +148,7 @@ class App(object):
 		self.playerShot : list = []
 		self.littlePlane : list = []
 		self.littlePlaneAppear : float = 0
+		self.hpUI = HpUI(self)
 		pyxel.init(self.screenWidth,self.screenHeight,fps = 60,title = "hello")
 		pyxel.load("./assets.pyxres")
 		pyxel.run(self.update,self.draw)
@@ -144,6 +161,7 @@ class App(object):
 		deltaTime = currentTime - lastTime
 		lastTime = currentTime
 		deltaTime = min(deltaTime,0.1)
+		self.hpUI.update()
 		self.player.update()
 		for i in self.playerShot:
 			i.update()
@@ -195,6 +213,27 @@ class App(object):
 				rotate = i.rotate,
 				scale = 1
 			)
+		#专门画UI的位置：
+		for i in range(int(self.hpUI.baseHp / 2)):
+			tempPosX : int = 0
+			if (2 * (i + 1)) > self.hpUI.hp:
+				tempPosX = 2
+			elif (2 * (i + 1)) <= self.hpUI.hp / 2:
+				tempPosX = 0
+			if (2 * (i + 1) - 1) == self.hpUI.hp:
+				tempPosX = 1
+			pyxel.blt(
+				self.hpUI.x + (i * self.hpUI.rectWidth * 2),
+				self.hpUI.y,
+				2,
+				self.hpUI.rectWidth * tempPosX,
+				0,
+				self.hpUI.rectWidth,
+				self.hpUI.rectWidth,
+				colkey = 0,
+				rotate =0,
+				scale = 1
+			)
 def movedByDirection(step,direction) -> list:
 	return [
 		math.cos(direction / 180 * math.pi) * step,
@@ -214,7 +253,7 @@ def lerpCorrect(a1 : float,a2 : float,step : float,smallest : float) -> float:
 		return a2
 	return a1 + offset
 def rotateLerpCorrect(a1 : float,a2 :float,step : float,smallest : float) -> float:
-	diff = (a2 - a1) % 360;
+	diff = (a2 - a1) % 360
 	if diff > 180:
 		diff -= 360
 	elif diff < -180:
