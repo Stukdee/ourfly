@@ -259,8 +259,6 @@ void Player::update () {
 	/*玩家移动*/
 	int stepCount = 0;
 	float angle = 0;
-	static float lastDirection = 0.0F;
-	static Vector2 offsetSpeed = (Vector2){0,0};
 	if(KEY_CONTROL_UP){angle += 270;stepCount++;}
 	if(KEY_CONTROL_DOWN){angle += 90;stepCount++;}
 	if(KEY_CONTROL_LEFT){angle += 180;stepCount++;}
@@ -269,17 +267,9 @@ void Player::update () {
 	if(KEY_CONTROL_UP && KEY_CONTROL_DOWN){stepCount = 0;}
 	if(KEY_CONTROL_RIGHT && KEY_CONTROL_LEFT){stepCount = 0;}
 	if(stepCount != 0){
-		lastDirection = angle / stepCount;
-		offsetSpeed.x = lerpCorrect(offsetSpeed.x,getOffset((this -> speed),lastDirection).x,0.2 * deltaTime * 60,0.1);
-		offsetSpeed.y = lerpCorrect(offsetSpeed.y,getOffset((this -> speed),lastDirection).y,0.2 * deltaTime * 60,0.1);
+		(this -> midPos).x += getOffset((this -> speed),angle / stepCount).x;
+		(this -> midPos).y += getOffset((this -> speed),angle / stepCount).y;
 	}
-	else{
-		offsetSpeed.x = lerpCorrect(offsetSpeed.x,0,0.2 * deltaTime * 60,0.1);
-		offsetSpeed.y = lerpCorrect(offsetSpeed.y,0,0.2 * deltaTime * 60,0.1);	
-	}
-	(this -> midPos).x += offsetSpeed.x;
-	(this -> midPos).y += offsetSpeed.y;
-
 	/*玩家射击*/
 	if (KEY_CONTROL_SHOT && (shotInterval > 0.2)) {
 		shotInterval = 0.0F;
