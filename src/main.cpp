@@ -126,7 +126,7 @@ int main () {
 		player.update();
 		basicInfos.push_back(&(player.basic));
 
-		for (auto it = playerShots.begin();it != playerShots.end();it++) {
+		for (auto it = playerShots.begin();it != playerShots.end();) {
 			(*it) -> update();
 			if ((*it) -> getIsDie()) {
 				delete (*it);
@@ -134,6 +134,7 @@ int main () {
 				continue;
 			}
 			basicInfos.push_back(&((*it) -> basic));
+			it++;
 		}
 
 		/*开始绘制*/
