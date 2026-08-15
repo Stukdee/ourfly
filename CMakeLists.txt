@@ -54,7 +54,7 @@ endif()
 
 # Linux 平台特定链接（Wayland 模式）
 if (UNIX AND NOT APPLE)
-	target_link_libraries(sheep PRIVATE
+	target_link_libraries(${PROJECT_NAME} PRIVATE
 		GLESv2
 		EGL
 		m
