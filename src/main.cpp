@@ -245,7 +245,7 @@ void BasicInfo::setYSort (float ySort_) {
 Player::Player () {
 	(this -> midPos) = (Vector2){SCREEN_WIDTH / 2,SCREEN_HEIGHT - (SCREEN_HEIGHT / 4)};
 	(this -> action) = 0;
-	(this -> speed) = 0.5;
+	(this -> speed) = 5;
 	(this -> size) = 2.0F;
 }
 
@@ -267,8 +267,8 @@ void Player::update () {
 	if(KEY_CONTROL_UP && KEY_CONTROL_DOWN){stepCount = 0;}
 	if(KEY_CONTROL_RIGHT && KEY_CONTROL_LEFT){stepCount = 0;}
 	if(stepCount != 0){
-		(this -> midPos).x += getOffset((this -> speed),angle / stepCount).x;
-		(this -> midPos).y += getOffset((this -> speed),angle / stepCount).y;
+		(this -> midPos).x += getOffset((this -> speed),angle / stepCount).x * deltaTime * 60;
+		(this -> midPos).y += getOffset((this -> speed),angle / stepCount).y * deltaTime * 60;
 	}
 	/*玩家射击*/
 	if (KEY_CONTROL_SHOT && (shotInterval > 0.2)) {
