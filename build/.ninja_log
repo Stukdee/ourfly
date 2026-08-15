@@ -1,7 +1,0 @@
-# ninja log v7
-16	2046	1786754187301223372	raylib/raylib/CMakeFiles/raylib.dir/rshapes.c.o	239d6fe5232b8996
-2048	2844	1786754189333381060	raylib/raylib/CMakeFiles/raylib.dir/utils.c.o	8ca2ea7e4f8389a3
-18	3697	1786754187303421309	raylib/raylib/CMakeFiles/raylib.dir/rtext.c.o	da16ee7947d093e5
-14	7767	1786754187299134643	raylib/raylib/CMakeFiles/raylib.dir/rcore.c.o	2d44b7a4a80a4e66
-15	8815	1786754187299961649	raylib/raylib/CMakeFiles/raylib.dir/rmodels.c.o	971b155fd867cc20
-22	9887	1786754187306882219	raylib/raylib/CMakeFiles/raylib.dir/rtextures.c.o	4c47229310074400

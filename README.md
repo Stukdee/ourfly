@@ -1,31 +1,32 @@
 # ourfly小游戏共创
 
-游戏采用pyxel作为图形库（不好用再换吧！！！）
+游戏采用raylib作为图形库（换不了啦，太累啦）
 
 相关链接
 
-[pyxel的github链接](https://github.com/kitao/pyxel)
+[raylib官网](https://www.raylib.com/)
 
-[pyxelstudio链接](https://www.pyxelstudio.net/)
+[raylib的github](https://github.com/raysan5/raylib)
 
-[pyxel用户指南](https://kitao.github.io/pyxel/web/user-guide/)
+[raylib的ima知识库（非官方）](https://ima.qq.com/wiki/?shareId=a3544346dfc524186193ef0ed18fc391c37189e31560aaebe55c158b4e8f8530&webFrom=10000079)
 
 ## 克隆项目：
 
 这有什么好教的，不讲啦！
 
-## 环境配置：
+## 构建与编译：
 
 ```bash
-python3 -m venv .venv
-source ./.venv/bin/activate
-pip3 install pyxel
+mkdir build
+cd build
+cmake ..
+make
 ```
 
 ## 运行：
 
 ```bash
-python3 main.py
+./ourfly
 ```
 
 ## 操作说明：
@@ -37,3 +38,5 @@ z 或者 m 键发射子弹
 ## 后记
 
 这个markdown完全是随便写写，如有问题记得告诉我呀♪(･ω･)ﾉ
+
+old文件夹存放着之前使用pyxel图形库编写的版本，感兴趣可以看看。
