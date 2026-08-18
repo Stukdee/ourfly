@@ -646,15 +646,15 @@ float randfloat (float a,float b) {
 }
 
 float rotateLerpCorrect (float a,float b,float step,float theMinest) {
-	int diff = (int(b) - int(a)) % 360;
-	if (diff > 180) {
-		diff -= 360;
+	float diff = fmodf(b - a,360.0F);
+	if (diff > 180.0F) {
+		diff -= 360.0F;
 	}
-	else if (diff < -180) {
-		diff += 360;
+	else if (diff < -180.0F) {
+		diff += 360.0F;
 	}
 	float offset = diff * step;
-	if ((fabsf(offset)) < theMinest) {
+	if (fabsf(offset) < theMinest) {
 		return b;
 	}
 	return a + offset;
