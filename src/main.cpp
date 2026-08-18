@@ -6,6 +6,7 @@
 #include <cmath>
 #include <ctime>
 #include <algorithm>
+#include <random>
 
 #define KEY_CONTROL_UP (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
 #define KEY_CONTROL_DOWN (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
@@ -20,11 +21,14 @@ const int SCREEN_HEIGHT = 500;
 
 /*全局变量*/
 float deltaTime = 0.0F;
+float littlePlaneGenerationInterval = 0.0F;
 
 /*纹理*/
 std::vector <Texture2D> playerTextures;
 std::vector <Texture2D> playerShotTextures;
+std::vector <Texture2D> littlePlaneTextures;
 
+/*类定义*/
 class BasicInfo {
 	private:
 	Texture2D *texture;
@@ -54,6 +58,15 @@ class BasicInfo {
 	void setYSort (float ySort_);
 };
 
+class CameraObject {
+	private:
+	Camera2D camera;
+	public:
+	CameraObject ();
+	void update ();
+	Camera2D getCamera () const;
+};
+
 class Player {
 	private:
 	Vector2 midPos;
@@ -66,6 +79,8 @@ class Player {
 	BasicInfo basic;
 	Player ();
 	void update ();
+	Vector2 getMidPos () const;
+	Rectangle getRect () const;
 };
 
 class PlayerShot {
@@ -82,12 +97,34 @@ class PlayerShot {
 	PlayerShot (Vector2 midPos_);
 	void update ();
 	bool getIsDie () const;
+	Rectangle getRect () const;
+	void setIsDie (bool isDie_);
+};
+
+class LittlePlane {
+	private:
+	Vector2 midPos;
+	Vector2 pos;
+	Rectangle rect;
+	int action;
+	float speed;
+	float size;
+	bool isDie;
+	float rotation;
+	public:
+	BasicInfo basic;
+	LittlePlane (Vector2 midPos_);
+	void update ();
+	bool getIsDie () const;
+	Rectangle getRect () const;
 };
 
 /*实例化类*/
 std::vector <BasicInfo*> basicInfos;
+CameraObject mainCamera;
 Player player;
 std::vector <PlayerShot*> playerShots;
+std::vector <LittlePlane*> littlePlanes;
 
 /*函数声明与定义*/
 static bool compareByYSort(const BasicInfo *a,const BasicInfo *b){
@@ -101,6 +138,13 @@ Vector2 getOffset (float step,float angle);
 
 float getDeltaTime ();
 
+float getFrom (Vector2 a,Vector2 b);
+
+int randint (int a,int b);
+
+float randfloat (float a,float b);
+
+float rotateLerpCorrect (float a,float b,float step,float theMinest);
 
 int main () {
 	/*获取绝对路径*/
@@ -113,14 +157,34 @@ int main () {
 
 	InitWindow(SCREEN_WIDTH,SCREEN_HEIGHT,"ourfly");
 	InitAudioDevice();
+	SetWindowState(FLAG_WINDOW_RESIZABLE);
+	SetTargetFPS(60);
+	SetTraceLogLevel(LOG_ERROR);
 
 	/*导入素材*/
 	playerTextures.push_back(LoadTexture((path + std::string("/assets/player/1.png")).c_str()));
 	playerShotTextures.push_back(LoadTexture((path + std::string("/assets/playerShot/1.png")).c_str()));
+	littlePlaneTextures.push_back(LoadTexture((path + std::string("/assets/littlePlane/1.png")).c_str()));
 
 	while (!WindowShouldClose()) {
 		/*更新*/
 		deltaTime = getDeltaTime();
+
+		/*生成更新*/
+		littlePlaneGenerationInterval += deltaTime * randfloat(1,10);
+		if (littlePlaneGenerationInterval > 10) {
+			littlePlaneGenerationInterval = 0.0F;
+			littlePlanes.push_back(new LittlePlane(
+				(Vector2){
+					float(randint(0 - (SCREEN_WIDTH / 2),SCREEN_WIDTH / 2)),
+					0 - SCREEN_HEIGHT
+				}
+			));
+		}
+
+		/*object更新*/
+		mainCamera.update();
+
 		basicInfos.clear();
 
 		player.update();
@@ -137,8 +201,20 @@ int main () {
 			it++;
 		}
 
+		for (auto it = littlePlanes.begin();it != littlePlanes.end();) {
+			(*it) -> update();
+			if ((*it) -> getIsDie()) {
+				delete (*it);
+				it = littlePlanes.erase(it);
+				continue;
+			}
+			basicInfos.push_back(&((*it) -> basic));
+			it++;
+		}
+
 		/*开始绘制*/
 		BeginDrawing();
+		BeginMode2D(mainCamera.getCamera());
 		ClearBackground((Color){134,129,136,255});
 		if (basicInfos.size() > 1) {
 			std::sort(basicInfos.begin(),basicInfos.end(),compareByYSort);
@@ -153,6 +229,20 @@ int main () {
 				(*it) -> getColor()
 			);
 		}
+		EndMode2D();
+		/*绘制黑边（保持游戏画面1:1）*/
+		float gameW = SCREEN_WIDTH * mainCamera.getCamera().zoom;
+		float gameH = SCREEN_HEIGHT * mainCamera.getCamera().zoom;
+		float barX = (GetScreenWidth() - gameW) / 2.0F;
+		float barY = (GetScreenHeight() - gameH) / 2.0F;
+		if (barX > 0) {
+			DrawRectangleRec((Rectangle){0,0,barX,(float)GetScreenHeight()},(Color){0,0,0,255});
+			DrawRectangleRec((Rectangle){(float)GetScreenWidth() - barX,0,barX,(float)GetScreenHeight()},(Color){0,0,0,255});
+		}
+		if (barY > 0) {
+			DrawRectangleRec((Rectangle){0,0,(float)GetScreenWidth(),barY},(Color){0,0,0,255});
+			DrawRectangleRec((Rectangle){0,(float)GetScreenHeight() - barY,(float)GetScreenWidth(), barY},(Color){0,0,0,255});
+		}
 		EndDrawing();
 	}
 	/*释放资源*/
@@ -160,6 +250,9 @@ int main () {
 		UnloadTexture(*it);
 	}
 	for (auto it = playerShotTextures.begin();it != playerShotTextures.end();it++) {
+		UnloadTexture(*it);
+	}
+	for (auto it = littlePlaneTextures.begin();it != littlePlaneTextures.end();it++) {
 		UnloadTexture(*it);
 	}
 	CloseWindow();
@@ -241,12 +334,44 @@ void BasicInfo::setYSort (float ySort_) {
 	return;
 }
 
+/*CameraObject类的实现*/
+CameraObject::CameraObject () {
+	(this -> camera).offset = (Vector2){(float)GetScreenWidth() / 2,(float)GetScreenHeight() / 2};
+	(this -> camera).rotation = 0;
+	(this -> camera).target = (Vector2){0,0};
+	(this -> camera).zoom = 1;
+}
+
+void CameraObject::update () {
+	(this -> camera).offset = (Vector2){(float)GetScreenWidth() / 2,(float)GetScreenHeight() / 2};
+	static float scale = 1.0F;
+	int currentWidth = GetScreenWidth();
+	int currentHeight = GetScreenHeight();
+	float scaleX = (float)currentWidth / SCREEN_WIDTH;
+	float scaleY = (float)currentHeight / SCREEN_HEIGHT;
+	float baseZoom = (scaleX < scaleY) ? scaleX : scaleY;
+	(this -> camera).zoom = scale * baseZoom;
+	return;
+}
+
+Camera2D CameraObject::getCamera () const {
+	return (this -> camera);
+}
+
 /*Player类的实现*/
 Player::Player () {
-	(this -> midPos) = (Vector2){SCREEN_WIDTH / 2,SCREEN_HEIGHT - (SCREEN_HEIGHT / 4)};
+	(this -> midPos) = (Vector2){0,(SCREEN_HEIGHT / 4)};
 	(this -> action) = 0;
 	(this -> speed) = 5;
 	(this -> size) = 2.0F;
+}
+
+Vector2 Player::getMidPos () const {
+	return (this -> midPos);
+}
+
+Rectangle Player::getRect () const {
+	return (this -> rect);
 }
 
 void Player::update () {
@@ -270,15 +395,21 @@ void Player::update () {
 	if (KEY_CONTROL_RIGHT && KEY_CONTROL_LEFT) {stepCount = 0;}
 	if (stepCount != 0) {
 		lastDirection = angle / stepCount;
-		offsetSpeed.x = lerpCorrect(offsetSpeed.x,getOffset(speed,lastDirection).x,0.01,0.01);
-		offsetSpeed.y = lerpCorrect(offsetSpeed.y,getOffset(speed,lastDirection).y,0.01,0.01);
+		offsetSpeed.x = lerpCorrect(offsetSpeed.x,getOffset((this -> speed),lastDirection).x,0.1,0.01);
+		offsetSpeed.y = lerpCorrect(offsetSpeed.y,getOffset((this -> speed),lastDirection).y,0.1,0.01);
 	}
 	else {
-		offsetSpeed.x = lerpCorrect(offsetSpeed.x,0,0.01,0.01);
-		offsetSpeed.y = lerpCorrect(offsetSpeed.y,0,0.01,0.01);
+		offsetSpeed.x = lerpCorrect(offsetSpeed.x,0,0.1,0.01);
+		offsetSpeed.y = lerpCorrect(offsetSpeed.y,0,0.1,0.01);
 	}
-	midPos.x += offsetSpeed.x * deltaTime * 60;
-	midPos.y += offsetSpeed.y * deltaTime * 60;
+	if (((this -> midPos).x > (SCREEN_WIDTH / 2)) || ((this -> midPos).x < (0 - (SCREEN_WIDTH / 2)))) {
+		offsetSpeed.x = getOffset((this -> speed),(this -> midPos.x) < 0 ? 0.0F : 180.0F).x;
+	}
+	if (((this -> midPos).y > (SCREEN_HEIGHT / 2)) || ((this -> midPos).y < (0 - (SCREEN_HEIGHT / 2)))) {
+		offsetSpeed.y = getOffset((this -> speed),(this -> midPos.y) < 0 ? 90.0F : -90.0F).y;
+	}
+	(this -> midPos).x += offsetSpeed.x * deltaTime * 60;
+	(this -> midPos).y += offsetSpeed.y * deltaTime * 60;
 	/*玩家射击*/
 	if (KEY_CONTROL_SHOT && (shotInterval > 0.2)) {
 		shotInterval = 0.0F;
@@ -331,10 +462,14 @@ PlayerShot::PlayerShot (Vector2 midPos_) {
 	(this -> isDie) = false;
 }
 
+Rectangle PlayerShot::getRect () const {
+	return (this -> rect);
+}
+
 void PlayerShot::update () {
 	/*移动*/
 	(this -> midPos).y -= (this -> speed) * deltaTime * 60;
-	if ((this -> midPos).y < -1000) {
+	if ((this -> midPos).y < -SCREEN_HEIGHT) {
 		(this -> isDie) = true;
 	}
 
@@ -379,6 +514,88 @@ bool PlayerShot::getIsDie () const {
 	return (this -> isDie);
 }
 
+void PlayerShot::setIsDie (bool isDie_) {
+	(this -> isDie) = isDie_;
+	return;
+}
+
+/*LittlePlane类的实现*/
+LittlePlane::LittlePlane (Vector2 midPos_) {
+	(this -> midPos) = midPos_;
+	(this -> action) = 0;
+	(this -> speed) = 5;
+	(this -> size) = 2.0F;
+	(this -> rotation) = 0.0F;
+	(this -> isDie) = false;
+}
+
+void LittlePlane::update () {
+	/*更随玩家*/
+	(this -> rotation) = rotateLerpCorrect(
+		(this -> rotation),
+		getFrom((this -> midPos),player.getMidPos()),
+		0.05 * deltaTime * 60,
+		0.1
+	);
+	(this -> midPos).x += getOffset((this -> speed),(this -> rotation)).x * deltaTime * 60;
+	(this -> midPos).y += getOffset((this -> speed),(this -> rotation)).y * deltaTime * 60;
+
+	/*死亡检测*/
+	if (CheckCollisionRecs((this -> rect),player.getRect())) {
+		(this -> isDie) = true;
+	}
+	for (auto it = playerShots.begin();it != playerShots.end();it++) {
+		if (CheckCollisionRecs((this -> rect),(*it) -> getRect())) {
+			(this -> isDie) = true;
+			(*it) -> setIsDie(true);
+		}
+	}
+
+	/*获取纹理*/
+	(this -> basic).setTexture(&(littlePlaneTextures.at(this -> action)));
+
+	/*设置位置*/
+	(this -> pos) = (Vector2){
+		(this -> midPos).x - (float((this -> basic).getTexture() -> width) * (this -> size) / 2),
+		(this -> midPos).y - (float((this -> basic).getTexture() -> height) * (this -> size) / 2)
+	};
+
+	/*设置basic*/
+	(this -> basic).setSource((Rectangle){
+		0,0,
+		float((this -> basic).getTexture() -> width),
+		float((this -> basic).getTexture() -> height)
+	});
+	(this -> basic).setDest((Rectangle){
+		(this -> midPos).x,
+		(this -> midPos).y,
+		float((this -> basic).getTexture() -> width) * (this -> size),
+		float((this -> basic).getTexture() -> height) * (this -> size)
+	});
+	(this -> basic).setOrigin((Vector2){
+		float((this -> basic).getTexture() -> width) / 2 * (this -> size),
+		float((this -> basic).getTexture() -> height) / 2 * (this -> size)
+	});
+	(this -> basic).setRotation((this -> rotation));
+	(this -> basic).setColor((Color){255,255,255,255});
+	(this -> basic).setYSort((this -> pos).y + ((this -> rect).height * (this -> size)));
+
+	/*设置rect*/
+	(this -> rect).width = (this -> basic).getTexture() -> width * (this -> size);
+	(this -> rect).height = (this -> basic).getTexture() -> height * (this -> size);
+	(this -> rect).x = (this -> pos).x;
+	(this -> rect).y = (this -> pos).y;
+	return;
+}
+
+bool LittlePlane::getIsDie () const {
+	return (this -> isDie);
+}
+
+Rectangle LittlePlane::getRect () const {
+	return (this -> rect);
+}
+
 /*函数实现*/
 float lerpCorrect (float a,float b,float step,float theMinest) {
 	float result = (a + ((b - a) * step));
@@ -389,7 +606,7 @@ float lerpCorrect (float a,float b,float step,float theMinest) {
 }
 
 Vector2 getOffset (float step,float angle) {
-	float radian = angle / 180 * M_PI;
+	float radian = angle / 180 * (4 * atan(1));
 	float offsetX = cos(radian) * step;
 	float offsetY = sin(radian) * step;
 	return (Vector2){offsetX,offsetY};
@@ -405,4 +622,40 @@ float getDeltaTime () {
 	}
 	lastTime = currentTime;
 	return deltaTime;
+}
+
+float getFrom (Vector2 a,Vector2 b) {
+	Vector2 c = {b.x - a.x,b.y - a.y};
+	return atan2f(c.y,c.x) * 180 / (4 * atan(1));
+}
+
+int randint (int a,int b) {
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution <> dis(a,b);
+	int randomNum = dis(gen); 
+	return randomNum;
+}
+
+float randfloat (float a,float b) {
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution <float> real_dis(a,b);
+	float randomNum = real_dis(gen); 
+	return randomNum;
+}
+
+float rotateLerpCorrect (float a,float b,float step,float theMinest) {
+	int diff = (int(b) - int(a)) % 360;
+	if (diff > 180) {
+		diff -= 360;
+	}
+	else if (diff < -180) {
+		diff += 360;
+	}
+	float offset = diff * step;
+	if ((fabsf(offset)) < theMinest) {
+		return b;
+	}
+	return a + offset;
 }
