@@ -20,10 +20,13 @@ const int SCREEN_WIDTH = 500;
 const int SCREEN_HEIGHT = 500;
 
 /*全局变量*/
+std::random_device randomDevice;
+std::mt19937 randomGen(randomDevice());
 float deltaTime = 0.0F;
 float littlePlaneGenerationInterval = 0.0F;
 
 /*纹理*/
+std::vector <std::vector <Texture2D> *> allTextures;
 std::vector <Texture2D> playerTextures;
 std::vector <Texture2D> playerShotTextures;
 std::vector <Texture2D> littlePlaneTextures;
@@ -163,8 +166,11 @@ int main () {
 
 	/*导入素材*/
 	playerTextures.push_back(LoadTexture((path + std::string("/assets/player/1.png")).c_str()));
+	allTextures.push_back(&playerTextures);
 	playerShotTextures.push_back(LoadTexture((path + std::string("/assets/playerShot/1.png")).c_str()));
+	allTextures.push_back(&playerShotTextures);
 	littlePlaneTextures.push_back(LoadTexture((path + std::string("/assets/littlePlane/1.png")).c_str()));
+	allTextures.push_back(&littlePlaneTextures);
 
 	while (!WindowShouldClose()) {
 		/*更新*/
@@ -246,14 +252,10 @@ int main () {
 		EndDrawing();
 	}
 	/*释放资源*/
-	for (auto it = playerTextures.begin();it != playerTextures.end();it++) {
-		UnloadTexture(*it);
-	}
-	for (auto it = playerShotTextures.begin();it != playerShotTextures.end();it++) {
-		UnloadTexture(*it);
-	}
-	for (auto it = littlePlaneTextures.begin();it != littlePlaneTextures.end();it++) {
-		UnloadTexture(*it);
+	for (auto it = allTextures.begin();it != allTextures.end();it++) {
+		for (auto its = (*it) -> begin();its != (*it)-> end();its++) {
+			UnloadTexture(*its);
+		}
 	}
 	CloseWindow();
 	CloseAudioDevice();
@@ -360,9 +362,9 @@ Camera2D CameraObject::getCamera () const {
 
 /*Player类的实现*/
 Player::Player () {
-	(this -> midPos) = (Vector2){0,(SCREEN_HEIGHT / 4)};
+	(this -> midPos) = (Vector2){0,(float(SCREEN_HEIGHT) / 4)};
 	(this -> action) = 0;
-	(this -> speed) = 5;
+	(this -> speed) = 300;
 	(this -> size) = 2.0F;
 }
 
@@ -402,14 +404,14 @@ void Player::update () {
 		offsetSpeed.x = lerpCorrect(offsetSpeed.x,0,0.1,0.01);
 		offsetSpeed.y = lerpCorrect(offsetSpeed.y,0,0.1,0.01);
 	}
-	if (((this -> midPos).x > (SCREEN_WIDTH / 2)) || ((this -> midPos).x < (0 - (SCREEN_WIDTH / 2)))) {
+	if (((this -> midPos).x > (float(SCREEN_WIDTH) / 2)) || ((this -> midPos).x < (0 - (float(SCREEN_WIDTH) / 2)))) {
 		offsetSpeed.x = getOffset((this -> speed),(this -> midPos.x) < 0 ? 0.0F : 180.0F).x;
 	}
-	if (((this -> midPos).y > (SCREEN_HEIGHT / 2)) || ((this -> midPos).y < (0 - (SCREEN_HEIGHT / 2)))) {
+	if (((this -> midPos).y > (float(SCREEN_HEIGHT) / 2)) || ((this -> midPos).y < (0 - (float(SCREEN_HEIGHT) / 2)))) {
 		offsetSpeed.y = getOffset((this -> speed),(this -> midPos.y) < 0 ? 90.0F : -90.0F).y;
 	}
-	(this -> midPos).x += offsetSpeed.x * deltaTime * 60;
-	(this -> midPos).y += offsetSpeed.y * deltaTime * 60;
+	(this -> midPos).x += offsetSpeed.x * deltaTime;
+	(this -> midPos).y += offsetSpeed.y * deltaTime;
 	/*玩家射击*/
 	if (KEY_CONTROL_SHOT && (shotInterval > 0.2)) {
 		shotInterval = 0.0F;
@@ -457,7 +459,7 @@ void Player::update () {
 PlayerShot::PlayerShot (Vector2 midPos_) {
 	(this -> midPos) = midPos_;
 	(this -> action) = 0;
-	(this -> speed) = 10;
+	(this -> speed) = 600;
 	(this -> size) = 2.0F;
 	(this -> isDie) = false;
 }
@@ -468,7 +470,7 @@ Rectangle PlayerShot::getRect () const {
 
 void PlayerShot::update () {
 	/*移动*/
-	(this -> midPos).y -= (this -> speed) * deltaTime * 60;
+	(this -> midPos).y -= (this -> speed) * deltaTime;
 	if ((this -> midPos).y < -SCREEN_HEIGHT) {
 		(this -> isDie) = true;
 	}
@@ -523,7 +525,7 @@ void PlayerShot::setIsDie (bool isDie_) {
 LittlePlane::LittlePlane (Vector2 midPos_) {
 	(this -> midPos) = midPos_;
 	(this -> action) = 0;
-	(this -> speed) = 5;
+	(this -> speed) = 300;
 	(this -> size) = 2.0F;
 	(this -> rotation) = 0.0F;
 	(this -> isDie) = false;
@@ -534,11 +536,11 @@ void LittlePlane::update () {
 	(this -> rotation) = rotateLerpCorrect(
 		(this -> rotation),
 		getFrom((this -> midPos),player.getMidPos()),
-		0.05 * deltaTime * 60,
+		6 * deltaTime,
 		0.1
 	);
-	(this -> midPos).x += getOffset((this -> speed),(this -> rotation)).x * deltaTime * 60;
-	(this -> midPos).y += getOffset((this -> speed),(this -> rotation)).y * deltaTime * 60;
+	(this -> midPos).x += getOffset((this -> speed),(this -> rotation)).x * deltaTime;
+	(this -> midPos).y += getOffset((this -> speed),(this -> rotation)).y * deltaTime;
 
 	/*死亡检测*/
 	if (CheckCollisionRecs((this -> rect),player.getRect())) {
@@ -630,18 +632,14 @@ float getFrom (Vector2 a,Vector2 b) {
 }
 
 int randint (int a,int b) {
-	std::random_device rd;
-	std::mt19937 gen(rd());
 	std::uniform_int_distribution <> dis(a,b);
-	int randomNum = dis(gen); 
+	int randomNum = dis(randomGen); 
 	return randomNum;
 }
 
 float randfloat (float a,float b) {
-	std::random_device rd;
-	std::mt19937 gen(rd());
 	std::uniform_real_distribution <float> real_dis(a,b);
-	float randomNum = real_dis(gen); 
+	float randomNum = real_dis(randomGen); 
 	return randomNum;
 }
 
